@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Bahasa Arab Interaktif - Al-Mubtada' & Al-Khobar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library untuk QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Quicksand:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f0fdf4;
+        }
+
+        .arabic {
+            font-family: 'Amiri', serif;
+            direction: rtl;
+        }
+
+        .bingo-card {
+            background: white;
+            border: 4px solid #10b981;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            margin: auto;
+        }
+
+        .bingo-cell {
+            border: 2px solid #e5e7eb;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+            position: relative;
+        }
+
+        .bingo-cell:hover {
+            background-color: #f3f4f6;
+        }
+
+        .selected-correct {
+            background-color: #10b981 !important;
+            color: white !important;
+            font-weight: bold;
+        }
+
+        .selected-wrong {
+            background-color: #ef4444 !important;
+            color: white !important;
+        }
+
+        .feedback-icon {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.8rem;
+        }
+
+        .free-space {
+            background-color: #ecfdf5;
+            font-weight: bold;
+            color: #059669;
+        }
+
+        @media print {
+            .no-print { display: none; }
+            .bingo-card { break-after: page; border: 2px solid black; box-shadow: none; }
+        }
+
+        .status-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .locked {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .timer-warning {
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #qrcode img {
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Status Terapung (Skor & Masa) -->
+    <div class="status-badge no-print">
+        <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-lg p-3 text-center w-32">
+            <p class="text-xs font-bold text-emerald-600 uppercase">Masa</p>
+            <p id="timer" class="text-3xl font-black text-emerald-700">60</p>
+        </div>
+        <div class="bg-white shadow-lg border-2 border-emerald-500 rounded-lg p-3 text-center w-32">
+            <p class="text-xs font-bold text-emerald-600 uppercase">Markah</p>
+            <p id="total-score" class="text-3xl font-black text-emerald-700">0</p>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-10 no-print">
+            <h1 class="text-4xl font-extrabold text-emerald-700 mb-2 italic">BINGO ARABIC CABARAN 1 MINIT! ⏱️</h1>
+            <p class="text-lg text-emerald-600">Tajuk: Padanan Mubtada' & Khobar (Muzakkar/Muannas)</p>
+            <div class="mt-6 flex flex-wrap justify-center gap-4">
+                <button id="start-btn" onclick="startGame()" class="bg-emerald-600 text-white px-8 py-3 rounded-full font-bold hover:bg-emerald-700 shadow-lg transition transform hover:scale-105">Mula Permainan!</button>
+                <button onclick="resetGame()" class="bg-gray-500 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-600 transition">Reset</button>
+                <button onclick="toggleQR()" class="bg-blue-600 text-white px-6 py-3 rounded-full font-bold hover:bg-blue-700 transition">📱 Kongsi Kod QR</button>
+                <button onclick="toggleTutorial()" class="bg-purple-600 text-white px-6 py-3 rounded-full font-bold hover:bg-purple-700 transition">📖 Tutorial</button>
+            </div>
+        </div>
+
+        <!-- Tutorial Section -->
+        <div id="tutorial-section" class="bg-white p-6 rounded-2xl shadow-md mb-10 border-2 border-purple-200 no-print">
+            <h2 class="text-2xl font-bold text-purple-700 mb-4 flex items-center gap-2">
+                <span>📖</span> Tutorial Mudah: Cara Bermain
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex gap-3">
+                    <div class="bg-purple-100 text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
+                    <p class="text-gray-600 text-sm">Klik butang <b>"Mula Permainan"</b>. Pemasa 1 minit akan bermula.</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-purple-100 text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">2</div>
+                    <p class="text-gray-600 text-sm">Klik pada <b>Mubtada'</b> (Subjek), kemudian cari <b>Khobar</b> (Predikat) yang secocok.</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-purple-100 text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">3</div>
+                    <p class="text-gray-600 text-sm">Pastikan jantina sama! <br><b>Lelaki + Lelaki</b> atau <br><b>Perempuan + Perempuan</b>.</p>
+                </div>
+            </div>
+            <div class="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 flex items-center justify-between">
+                <span class="text-emerald-700 font-bold">Contoh Betul:</span>
+                <span class="arabic text-xl font-bold text-emerald-800">الطالبُ (M) + نشيطٌ (M) ✅</span>
+            </div>
+        </div>
+
+        <!-- QR Code Section (Hidden by Default) -->
+        <div id="qr-container" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[200] flex items-center justify-center p-4">
+            <div class="bg-white p-8 rounded-3xl text-center max-w-sm w-full">
+                <h2 class="text-xl font-bold text-emerald-700 mb-4">Sila Scan Untuk Bermain</h2>
+                <div id="qrcode" class="mb-6 flex justify-center"></div>
+                <p class="text-xs text-gray-500 mb-6">Nota: Pastikan anda memuat naik fail ini ke web hosting untuk mendapatkan pautan yang sah.</p>
+                <button onclick="toggleQR()" class="bg-red-500 text-white px-8 py-2 rounded-full font-bold">Tutup</button>
+            </div>
+        </div>
+
+        <!-- Bingo Cards Container -->
+        <div id="bingo-container" class="grid grid-cols-1 md:grid-cols-2 gap-10 locked">
+            <!-- Kad akan dijana oleh JS -->
+        </div>
+
+        <!-- Modal Keputusan -->
+        <div id="result-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[100]">
+            <div class="bg-white p-8 rounded-3xl text-center shadow-2xl transform scale-110">
+                <h2 class="text-3xl font-black text-emerald-700 mb-2">MASA TAMAT! 🏁</h2>
+                <p class="text-gray-600 mb-4 text-lg">Markah Akhir Anda:</p>
+                <p id="final-score" class="text-6xl font-black text-amber-500 mb-6">0</p>
+                <button onclick="closeModal()" class="bg-emerald-600 text-white px-8 py-2 rounded-full font-bold">Cuba Lagi</button>
+            </div>
+        </div>
+
+        <!-- Answer Section -->
+        <div id="answer-section" class="hidden mt-12 p-8 bg-white rounded-2xl border-2 border-dashed border-amber-400">
+            <h2 class="text-2xl font-bold text-amber-700 mb-4">Panduan Padanan Betul</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 arabic text-right text-xl">
+                <div class="p-2 border-b">Muzakkar (L): الطالبُ، البيتُ، الطعامُ، الجوُّ، الكتابُ، الفصلُ، الشارعُ، العلمُ</div>
+                <div class="p-2 border-b">Muannas (P): المعلمةُ، المدرسةُ، السيارةُ، الحديقةُ</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 60;
+        let timerInterval = null;
+        let isGameRunning = false;
+        let lastSelection = null;
+
+        const wordsData = [
+            { text: "الطالبُ", type: "mubtada", gender: "m" },
+            { text: "نشيطٌ", type: "khobar", gender: "m" },
+            { text: "المعلمةُ", type: "mubtada", gender: "f" },
+            { text: "مخلصةٌ", type: "khobar", gender: "f" },
+            { text: "البيتُ", type: "mubtada", gender: "m" },
+            { text: "كبيرٌ", type: "khobar", gender: "m" },
+            { text: "المدرسةُ", type: "mubtada", gender: "f" },
+            { text: "نظيفةٌ", type: "khobar", gender: "f" },
+            { text: "الطعامُ", type: "mubtada", gender: "m" },
+            { text: "لذيذٌ", type: "khobar", gender: "m" },
+            { text: "الجوُّ", type: "mubtada", gender: "m" },
+            { text: "جميلٌ", type: "khobar", gender: "m" },
+            { text: "السيارةُ", type: "mubtada", gender: "f" },
+            { text: "سريعةٌ", type: "khobar", gender: "f" },
+            { text: "الكتابُ", type: "mubtada", gender: "m" },
+            { text: "مفيدٌ", type: "khobar", gender: "m" },
+            { text: "الفصلُ", type: "mubtada", gender: "m" },
+            { text: "واسعٌ", type: "khobar", gender: "m" },
+            { text: "الشارعُ", type: "mubtada", gender: "m" },
+            { text: "مزدحمٌ", type: "khobar", gender: "m" },
+            { text: "الحديقةُ", type: "mubtada", gender: "f" },
+            { text: "رائعةٌ", type: "khobar", gender: "f" },
+            { text: "العلمُ", type: "mubtada", gender: "m" },
+            { text: "نورٌ", type: "khobar", gender: "m" }
+        ];
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function toggleTutorial() {
+            document.getElementById('tutorial-section').classList.toggle('hidden');
+        }
+
+        function toggleQR() {
+            const container = document.getElementById('qr-container');
+            container.classList.toggle('hidden');
+            const qrDiv = document.getElementById("qrcode");
+            if (qrDiv.innerHTML === "") {
+                new QRCode(qrDiv, {
+                    text: window.location.href,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#065f46",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+        }
+
+        function startGame() {
+            if (isGameRunning) return;
+            resetGame();
+            isGameRunning = true;
+            document.getElementById('bingo-container').classList.remove('locked');
+            document.getElementById('start-btn').classList.add('hidden');
+            
+            // Auto hide tutorial when game starts to save space
+            document.getElementById('tutorial-section').classList.add('hidden');
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if (timeLeft <= 10) document.getElementById('timer').parentElement.classList.add('timer-warning');
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            isGameRunning = false;
+            document.getElementById('bingo-container').classList.add('locked');
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('result-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').classList.add('hidden');
+            document.getElementById('start-btn').classList.remove('hidden');
+            resetGame();
+        }
+
+        function handleCellClick(cell, wordObj) {
+            if (!isGameRunning) return;
+            if (cell.classList.contains('selected-correct') || cell.classList.contains('selected-wrong')) return;
+
+            if (!lastSelection) {
+                lastSelection = { cell, wordObj };
+                cell.classList.add('selected-correct');
+                cell.innerHTML += `<span class="feedback-icon">⏳</span>`;
+                return;
+            }
+
+            const isMatch = (
+                (lastSelection.wordObj.type !== wordObj.type) && 
+                (lastSelection.wordObj.gender === wordObj.gender)
+            );
+
+            if (isMatch) {
+                score += 10;
+                cell.classList.add('selected-correct');
+                cell.innerHTML += `<span class="feedback-icon">✅</span>`;
+                lastSelection.cell.innerHTML = lastSelection.cell.innerHTML.replace('⏳', '✅');
+                lastSelection = null;
+            } else {
+                score -= 5;
+                cell.classList.add('selected-wrong');
+                cell.innerHTML += `<span class="feedback-icon">❌</span>`;
+                
+                const currentSelection = lastSelection;
+                setTimeout(() => {
+                    currentSelection.cell.classList.remove('selected-correct');
+                    currentSelection.cell.innerHTML = currentSelection.cell.innerHTML.replace('⏳', '');
+                    cell.classList.remove('selected-wrong');
+                    cell.innerHTML = cell.innerHTML.replace('❌', '');
+                }, 800);
+                lastSelection = null;
+            }
+            updateScore();
+        }
+
+        function updateScore() {
+            document.getElementById('total-score').innerText = score;
+        }
+
+        function generateCards() {
+            const container = document.getElementById('bingo-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                let shuffled = shuffle([...wordsData]).slice(0, 24);
+                let cardHTML = `
+                    <div class="bingo-card p-4">
+                        <div class="text-center mb-4">
+                            <h2 class="text-2xl font-black text-emerald-600">BINGO SET ${i}</h2>
+                        </div>
+                        <div class="grid grid-cols-5 border-2 border-emerald-200">
+                            <div class="bg-emerald-600 text-white font-bold p-2 text-center">B</div>
+                            <div class="bg-emerald-600 text-white font-bold p-2 text-center">I</div>
+                            <div class="bg-emerald-600 text-white font-bold p-2 text-center">N</div>
+                            <div class="bg-emerald-600 text-white font-bold p-2 text-center">G</div>
+                            <div class="bg-emerald-600 text-white font-bold p-2 text-center">O</div>
+                `;
+
+                for (let j = 0; j < 25; j++) {
+                    if (j === 12) {
+                        cardHTML += `<div class="bingo-cell free-space">FREE ✨</div>`;
+                    } else {
+                        let wordIndex = j > 12 ? j - 1 : j;
+                        let wordObj = shuffled[wordIndex];
+                        cardHTML += `
+                            <div class="bingo-cell arabic" onclick='handleCellClick(this, ${JSON.stringify(wordObj)})'>
+                                ${wordObj.text}
+                            </div>`;
+                    }
+                }
+                cardHTML += `</div></div>`;
+                container.innerHTML += cardHTML;
+            }
+        }
+
+        function resetGame() {
+            clearInterval(timerInterval);
+            score = 0;
+            timeLeft = 60;
+            isGameRunning = false;
+            lastSelection = null;
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('timer').parentElement.classList.remove('timer-warning');
+            document.getElementById('bingo-container').classList.add('locked');
+            document.getElementById('start-btn').classList.remove('hidden');
+            updateScore();
+            generateCards();
+        }
+
+        function showAnswers() {
+            document.getElementById('answer-section').classList.toggle('hidden');
+        }
+
+        window.onload = generateCards;
+    </script>
+</body>
+</html>
